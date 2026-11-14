@@ -3,6 +3,7 @@ camera = cv2.VideoCapture(0);
 
 while (True):
     conectado, imagem = camera.read()
+    imagem = cv2 .cvtColor(imagem, cv2.COLOR_BGR2GRAY)  # Converte a imagem para escala de cinza
     cv2.imshow("Face", imagem)
 
     # Aguarda 1ms para capturar a tecla pressionada
