@@ -1,13 +1,21 @@
 
-# Importação das bibliotecas
+# ==========================================
+# IMPORTAÇÃO DAS BIBLIOTECAS
+# ==========================================
+
 import cv2
 import numpy as np
 import os
 import re
+import time
 
 
-# Choose the face detector
-# -> Options: ssd | haarcascade
+# ==========================================
+# CONFIGURAÇÕES DO DETECTOR
+# ==========================================
+
+# Options: ssd | haarcascade
+
 detector = "haarcascade"
 
 max_width = 800
@@ -15,33 +23,47 @@ max_samples = 10
 starting_sample_number = 0
 
 
-# DroidCam configuration
+# ==========================================
+# CONFIGURAÇÃO DROIDCAM
+# ==========================================
+
 camera_index = 0
 
 
-# Function to parse the name of the person
+# ==========================================
+# FUNÇÃO PARA TRATAR O RA
+# ==========================================
+
 def parse_name(name):
+
     name = re.sub(r"[^\w\s]", '', name)
     name = re.sub(r"\s+", '_', name)
+
     return name
 
 
-# Create the final folder where the photos will be saved
+# ==========================================
+# CRIAÇÃO DAS PASTAS
+# ==========================================
+
 def create_folders(final_path, final_path_full):
 
-    if not os.path.exists(final_path):
-        os.makedirs(final_path)
-
-    if not os.path.exists(final_path_full):
-        os.makedirs(final_path_full)
+    os.makedirs(final_path, exist_ok=True)
+    os.makedirs(final_path_full, exist_ok=True)
 
 
-# Return the detected face using Haar cascades
+# ==========================================
+# DETECTOR FACIAL - HAAR CASCADE
+# ==========================================
+
 def detect_face(face_detector, orig_frame):
 
     frame = orig_frame.copy()
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(
+        frame,
+        cv2.COLOR_BGR2GRAY
+    )
 
     faces = face_detector.detectMultiScale(
         gray,
@@ -64,12 +86,19 @@ def detect_face(face_detector, orig_frame):
         face_roi = orig_frame[y:y + h, x:x + w]
 
         if face_roi.size > 0:
-            face_roi = cv2.resize(face_roi, (140, 140))
+
+            face_roi = cv2.resize(
+                face_roi,
+                (140, 140)
+            )
 
     return face_roi, frame
 
 
-# Return the detected face using SSD
+# ==========================================
+# DETECTOR FACIAL - SSD
+# ==========================================
+
 def detect_face_ssd(network, orig_frame, show_conf=True, conf_min=0.7):
 
     frame = orig_frame.copy()
@@ -95,7 +124,10 @@ def detect_face_ssd(network, orig_frame, show_conf=True, conf_min=0.7):
 
         if confidence > conf_min:
 
-            bbox = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            bbox = (
+                detections[0, 0, i, 3:7] *
+                np.array([w, h, w, h])
+            )
 
             (start_x, start_y, end_x, end_y) = bbox.astype("int")
 
@@ -103,16 +135,24 @@ def detect_face_ssd(network, orig_frame, show_conf=True, conf_min=0.7):
                 start_x < 0 or
                 start_y < 0 or
                 end_x > w or
-                end_y > h
+                end_y > h or
+                end_x <= start_x or
+                end_y <= start_y
             ):
                 continue
 
-            face_roi = orig_frame[start_y:end_y, start_x:end_x]
+            face_roi = orig_frame[
+                start_y:end_y,
+                start_x:end_x
+            ]
 
             if face_roi.size == 0:
                 continue
 
-            face_roi = cv2.resize(face_roi, (90, 120))
+            face_roi = cv2.resize(
+                face_roi,
+                (90, 120)
+            )
 
             cv2.rectangle(
                 frame,
@@ -139,34 +179,66 @@ def detect_face_ssd(network, orig_frame, show_conf=True, conf_min=0.7):
     return face_roi, frame
 
 
-# Load the face detector
+# ==========================================
+# CARREGAMENTO DO DETECTOR FACIAL
+# ==========================================
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
 if detector == "ssd":
 
     network = cv2.dnn.readNetFromCaffe(
-        "deploy.prototxt.txt",
-        "res10_300x300_ssd_iter_140000.caffemodel"
+
+        os.path.join(
+            base_dir,
+            "..",
+            "Modelos",
+            "deploy.prototxt.txt"
+        ),
+
+        os.path.join(
+            base_dir,
+            "..",
+            "Modelos",
+            "res10_300x300_ssd_iter_140000.caffemodel"
+        )
+
     )
 
 else:
 
-    # Load Haar Cascade from OpenCV installation
-    cascade_path = (
-        cv2.data.haarcascades +
+    cascade_path = os.path.join(
+        base_dir,
+        "..",
+        "Modelos",
         "haarcascade_frontalface_default.xml"
     )
+
+    cascade_path = os.path.abspath(cascade_path)
 
     face_detector = cv2.CascadeClassifier(cascade_path)
 
     if face_detector.empty():
 
         print("Error: Could not load Haar Cascade classifier.")
+        print("File location:", cascade_path)
+
         exit()
 
+    print("Haar Cascade loaded successfully!")
 
-# Video capture object - DroidCam
+
+# ==========================================
+# CONEXÃO COM DROIDCAM
+# ==========================================
+
 print("Connecting to DroidCam...")
 
-cam = cv2.VideoCapture(camera_index, cv2.CAP_ANY)
+cam = cv2.VideoCapture(
+    camera_index,
+    cv2.CAP_MSMF
+)
 
 if not cam.isOpened():
 
@@ -178,18 +250,36 @@ if not cam.isOpened():
 
 print("DroidCam connected successfully!")
 
+time.sleep(2)
 
-# Configure camera resolution
+
+# ==========================================
+# CONFIGURAÇÃO DA RESOLUÇÃO
+# ==========================================
+
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 
-# Folders where the photos will be stored
-folder_faces = "dataset/"
-folder_full = "dataset_full/"
+# ==========================================
+# PASTAS DE ARMAZENAMENTO
+# ==========================================
+
+folder_faces = os.path.join(
+    base_dir,
+    "dataset"
+)
+
+folder_full = os.path.join(
+    base_dir,
+    "dataset_full"
+)
 
 
-# The user needs to type their RA
+# ==========================================
+# IDENTIFICAÇÃO DO USUÁRIO
+# ==========================================
+
 person_name = input("Digite o seu RA: ")
 
 person_name = parse_name(person_name)
@@ -202,39 +292,63 @@ if not person_name:
     exit()
 
 
-# Join the path (dataset directory + subdirectory)
-final_path = os.path.join(folder_faces, person_name)
+# ==========================================
+# CAMINHOS DAS FOTOGRAFIAS
+# ==========================================
 
-final_path_full = os.path.join(folder_full, person_name)
+final_path = os.path.join(
+    folder_faces,
+    person_name
+)
 
-print("All photos are going to be saved in {}".format(final_path))
+final_path_full = os.path.join(
+    folder_full,
+    person_name
+)
+
+print("Rostos serão salvos em:", final_path)
+print("Imagens completas serão salvas em:", final_path_full)
 
 
-# Create folders
-create_folders(final_path, final_path_full)
+# ==========================================
+# CRIAÇÃO DAS PASTAS DO USUÁRIO
+# ==========================================
 
+create_folders(
+    final_path,
+    final_path_full
+)
+
+
+# ==========================================
+# CONTADOR DE FOTOGRAFIAS
+# ==========================================
 
 sample = 0
 
 
-# Loop over every frame of the video stream
+# ==========================================
+# CAPTURA E PROCESSAMENTO DAS IMAGENS
+# ==========================================
+
 while True:
 
     ret, frame = cam.read()
 
-    # Check if the camera is sending images
     if not ret or frame is None:
 
         print("Error receiving image from DroidCam.")
         break
 
-    # Resize only if a max_width is specified
+    # Redimensionamento da imagem
+
     if max_width is not None:
 
         video_width = max_width
 
         video_height = int(
-            frame.shape[0] * (max_width / frame.shape[1])
+            frame.shape[0] *
+            (max_width / frame.shape[1])
         )
 
         frame = cv2.resize(
@@ -242,7 +356,8 @@ while True:
             (video_width, video_height)
         )
 
-    # Detect faces
+    # Detecção facial
+
     if detector == "ssd":
 
         face_roi, processed_frame = detect_face_ssd(
@@ -257,48 +372,79 @@ while True:
             frame
         )
 
-    # Display capture instructions
+    # ======================================
+    # CONVERSÃO DA VISUALIZAÇÃO PARA CINZA
+    # ======================================
+
+    display_frame = cv2.cvtColor(
+        processed_frame,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    # Instruções na tela
+
     if face_roi is not None:
 
         cv2.putText(
-            processed_frame,
+            display_frame,
             "Press Q to capture",
             (20, 35),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
-            (0, 255, 0),
+            255,
             2
         )
 
     else:
 
         cv2.putText(
-            processed_frame,
+            display_frame,
             "No face detected",
             (20, 35),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
-            (0, 0, 255),
+            255,
             2
         )
 
-    # Show the camera image
-    cv2.imshow("Capturing face", processed_frame)
+    # Mostrar câmera em preto e branco
 
-    # Read keyboard input only once per frame
-    key = cv2.waitKey(1) & 0xFF
+    # Exibe a câmera em cores
+    cv2.imshow("Capturing face", frame)
 
-    # Press Q to capture the detected face
-    if key == ord('q'):
+    # Capturar tecla pressionada
+
+    key = cv2.waitKey(10) & 0xFF
+
+    if key != 255:
+        print("Tecla detectada:", key)
+
+    # ======================================
+    # SALVAR FOTOGRAFIA COM Q
+    # ======================================
+
+    if key == ord('q') or key == ord('Q'):
 
         if face_roi is not None:
 
-            sample += 1
+            # Converter rosto para preto e branco
+
+            face_roi_bw = cv2.cvtColor(
+                face_roi,
+                cv2.COLOR_BGR2GRAY
+            )
+
+            # Converter imagem completa para preto e branco
+
+            frame_bw = cv2.cvtColor(
+                frame,
+                cv2.COLOR_BGR2GRAY
+            )
+
+            # Nome da fotografia
 
             photo_sample = (
-                sample + starting_sample_number - 1
-                if starting_sample_number > 0
-                else sample
+                sample + starting_sample_number + 1
             )
 
             image_name = (
@@ -306,38 +452,97 @@ while True:
                 str(photo_sample) + ".jpg"
             )
 
-            # Save the cropped face
-            cv2.imwrite(
-                os.path.join(final_path, image_name),
-                face_roi
+            # Caminhos completos
+
+            face_image_path = os.path.join(
+                final_path,
+                image_name
             )
 
-            # Save the full image
-            cv2.imwrite(
-                os.path.join(final_path_full, image_name),
-                frame
+            full_image_path = os.path.join(
+                final_path_full,
+                image_name
             )
 
-            print("=> photo " + str(sample))
+            # Salvar rosto recortado
 
-            cv2.imshow("face", face_roi)
+            face_saved = cv2.imwrite(
+                face_image_path,
+                face_roi_bw
+            )
+
+            # Salvar imagem completa
+
+            full_saved = cv2.imwrite(
+                full_image_path,
+                frame_bw
+            )
+
+            # Confirmar gravação
+
+            if face_saved and full_saved:
+
+                sample += 1
+
+                print(
+                    "=> Photo " +
+                    str(sample) +
+                    " saved successfully!"
+                )
+
+                print("Face:", face_image_path)
+                print("Full image:", full_image_path)
+
+            else:
+
+                print("Error saving photo.")
+                print("Face saved:", face_saved)
+                print("Full image saved:", full_saved)
+
+            # Mostrar rosto capturado em preto e branco
+
+            cv2.imshow(
+                "Captured face",
+                face_roi_bw
+            )
 
         else:
 
             print("No face detected. Try again.")
 
-    # Press ESC to exit the program
+    # ======================================
+    # FECHAR COM ESC
+    # ======================================
+
     if key == 27:
+
         print("Capture interrupted.")
         break
 
-    # Finish when the maximum number of photos is reached
+    # Fechar se a janela for fechada pelo X
+
+    if cv2.getWindowProperty(
+        "Capturing face",
+        cv2.WND_PROP_VISIBLE
+    ) < 1:
+
+        print("Window closed.")
+        break
+
+    # Finalizar após 10 fotografias
+
     if sample >= max_samples:
+
+        print("Maximum number of photos reached.")
         break
 
 
-# Finish the capture
+# ==========================================
+# FINALIZAÇÃO
+# ==========================================
+
 print("Completed!")
+print("Total photos saved:", sample)
 
 cam.release()
 
