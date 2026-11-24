@@ -16,7 +16,8 @@ import time
 
 # Options: ssd | haarcascade
 
-detector = "haarcascade"
+#detector = "haarcascade"
+detector = "ssd"
 
 max_width = 800
 max_samples = 10
@@ -233,22 +234,32 @@ else:
 # CONEXÃO COM DROIDCAM
 # ==========================================
 
-print("Connecting to DroidCam...")
+print("Procurando uma câmera disponível...")
 
-cam = cv2.VideoCapture(
-    camera_index,
-    cv2.CAP_MSMF
-)
+def encontrar_camera():
+    for indice in range(3):
+        print(f"Testando câmera no índice {indice}...")
 
-if not cam.isOpened():
+        cam = cv2.VideoCapture(indice, cv2.CAP_ANY)
 
-    print("Error: Could not connect to DroidCam.")
-    print("Check if DroidCam Client is open and connected.")
+        if cam.isOpened():
+            ret, frame = cam.read()
 
-    cam.release()
+            if ret and frame is not None:
+                print(f"Câmera encontrada no índice {indice}!")
+                return cam
+
+        cam.release()
+
+    return None
+
+cam = encontrar_camera()
+
+if cam is None:
+    print("Erro: nenhuma câmera funcional foi encontrada.")
     exit()
 
-print("DroidCam connected successfully!")
+print("Câmera conectada com sucesso!")
 
 time.sleep(2)
 
@@ -410,7 +421,8 @@ while True:
     # Mostrar câmera em preto e branco
 
     # Exibe a câmera em cores
-    cv2.imshow("Capturing face", frame)
+    #cv2.imshow("Capturing face", frame)
+    cv2.imshow("Capturing face", processed_frame)
 
     # Capturar tecla pressionada
 
