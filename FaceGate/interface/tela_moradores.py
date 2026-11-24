@@ -115,7 +115,10 @@ class TelaMoradores(ctk.CTkFrame):
         self.lista = ctk.CTkScrollableFrame(
             conteudo,
             fg_color="transparent",
-            corner_radius=0
+            corner_radius=0,
+            scrollbar_fg_color="#CBD5E1",
+            scrollbar_button_color="#94A3B8",
+            scrollbar_button_hover_color="#64748B"
         )
 
         self.lista.pack(

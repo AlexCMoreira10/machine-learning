@@ -1,0 +1,35 @@
+# IDE
+.idea/
+
+# Arquivos privados
+FaceGate/.env
+
+# Dados biométricos de testes antigos
+FaceGate/Facial/
+FaceGate/Testes-concluidos/dataset/
+FaceGate/Testes-concluidos/dataset_full/
+Testes-concluidos/dataset/
+Testes-concluidos/dataset_full/
+
+# Dados gerados
+Modelos/face_names.pickle
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Modelos gerados pelo treinamento
+FaceGate/modelos_moradores/
+
+# Arquivos de cache do Python
+FaceGate/interface/__pycache__/
+
+# Dados pessoais dos moradores
+FaceGate/dados/moradores.json
+FaceGate/Modelos/face_names.pickle
+FaceGate/dataset_moradores/
+
+# Ambientes virtuais
+.venv/
+venv/
